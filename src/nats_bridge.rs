@@ -1,5 +1,6 @@
 use async_nats::Client;
 use base64::Engine as _;
+use futures_util::StreamExt;
 use log::{error, info};
 use serde::Deserialize;
 use tokio::sync::{broadcast, mpsc};
@@ -131,11 +132,10 @@ pub async fn publish_audio_chunks(
                 .as_secs_f64(),
             "vad_active": true,
         });
+        let subject: String = "mordomo.audio.chunk".to_string();
+        let data: bytes::Bytes = serde_json::to_vec(&payload).unwrap_or_default().into();
         if let Err(e) = client
-            .publish(
-                "mordomo.audio.chunk".into(),
-                serde_json::to_vec(&payload).unwrap_or_default().into(),
-            )
+            .publish(subject, data)
             .await
         {
             error!("Failed to publish audio chunk: {}", e);
