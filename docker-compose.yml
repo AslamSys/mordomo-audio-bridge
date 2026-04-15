@@ -1,0 +1,22 @@
+services:
+  audio-bridge:
+    build: .
+    image: aslamsys/mordomo-audio-bridge:latest
+    container_name: audio-bridge
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    environment:
+      - NATS_URL=nats://nats:4222
+      - WS_PORT=3100
+      - ENABLE_LOCAL_PLAYBACK=true
+    devices:
+      - /dev/snd:/dev/snd
+    depends_on:
+      - nats
+    networks:
+      - mordomo-net
+
+networks:
+  mordomo-net:
+    external: true
