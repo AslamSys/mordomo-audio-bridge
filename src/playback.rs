@@ -3,6 +3,14 @@ use log::{error, info, warn};
 use tokio::sync::broadcast;
 
 pub async fn run_playback(
+    rx: broadcast::Receiver<Vec<u8>>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // cpal::Stream is !Send, so run everything in a blocking thread
+    tokio::task::spawn_blocking(move || run_playback_blocking(rx))
+        .await?
+}
+
+fn run_playback_blocking(
     mut rx: broadcast::Receiver<Vec<u8>>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let host = cpal::default_host();
@@ -24,7 +32,6 @@ pub async fn run_playback(
         &config,
         move |data: &mut [i16], _: &cpal::OutputCallbackInfo| {
             let mut offset = 0;
-            // Try to fill from buffered PCM
             while offset < data.len() {
                 match sample_rx.try_recv() {
                     Ok(pcm) => {
@@ -39,7 +46,6 @@ pub async fn run_playback(
                         offset += to_copy;
                     }
                     Err(_) => {
-                        // Fill rest with silence
                         for sample in &mut data[offset..] {
                             *sample = 0;
                         }
@@ -55,8 +61,9 @@ pub async fn run_playback(
     stream.play()?;
     info!("Local playback stream started");
 
+    // Use blocking_recv since we're in a blocking context
     loop {
-        match rx.recv().await {
+        match rx.blocking_recv() {
             Ok(pcm) => {
                 let _ = sample_tx.send(pcm);
             }
