@@ -40,14 +40,14 @@ impl NatsBridge {
     }
 
     async fn subscribe_tts(&self) {
-        let mut sub = match self.client.subscribe("tts.audio_chunk.*").await {
+        let mut sub = match self.client.subscribe("mordomo.tts.audio_chunk.*").await {
             Ok(s) => s,
             Err(e) => {
-                error!("Failed to subscribe to tts.audio_chunk.*: {}", e);
+                error!("Failed to subscribe to mordomo.tts.audio_chunk.*: {}", e);
                 return;
             }
         };
-        info!("Subscribed to tts.audio_chunk.*");
+info!("Subscribed to mordomo.tts.audio_chunk.*");
 
         while let Some(msg) = sub.next().await {
             let Ok(chunk) = serde_json::from_slice::<TtsChunk>(&msg.payload) else {
@@ -64,9 +64,9 @@ impl NatsBridge {
     async fn subscribe_states(&self) {
         // Subscribe to multiple state-related subjects
         let subjects = [
-            "wake_word.detected",
-            "tts.status.*",
-            "speech.transcribed",
+            "mordomo.wake_word.detected",
+            "mordomo.tts.status.*",
+            "mordomo.speech.transcribed",
         ];
 
         let mut handles = Vec::new();
@@ -85,8 +85,8 @@ impl NatsBridge {
 
                 while let Some(msg) = sub.next().await {
                     let state = match msg.subject.as_str() {
-                        s if s == "wake_word.detected" => "listening".to_string(),
-                        s if s.starts_with("tts.status.") => {
+                        s if s == "mordomo.wake_word.detected" => "listening".to_string(),
+                        s if s.starts_with("mordomo.tts.status.") => {
                             if let Ok(status) = serde_json::from_slice::<TtsStatus>(&msg.payload) {
                                 match status.status.as_str() {
                                     "started" => "speaking".to_string(),
@@ -97,7 +97,7 @@ impl NatsBridge {
                                 continue;
                             }
                         }
-                        s if s == "speech.transcribed" => "processing".to_string(),
+                        s if s == "mordomo.speech.transcribed" => "processing".to_string(),
                         _ => continue,
                     };
 
